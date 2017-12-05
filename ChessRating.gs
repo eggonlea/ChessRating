@@ -6,6 +6,7 @@ var quick_rating = 0;
 var blitz_rating = 0;
 var highest_rating = 0;
 var note = null;
+var link = null;
 
 function BackupSheet() {
   var bak = 'bak.' + Utilities.formatDate(new Date(), 'GMT-7', 'yyyy-MM-dd');
@@ -24,18 +25,6 @@ function BackupSheet() {
   ss.moveActiveSheet(2);
   ss.setActiveSheet(cur);
   
-  // reset background
-  var range = cur.getDataRange();
-  var rows = range.getNumRows();
-  var cols = range.getNumColumns();
-  for (var i = 1; i <= rows; i++) {
-    for (var j = 1; j <= cols; j++) {
-      var cell = range.getCell(i,j);
-      var color = cell.getBackground();
-      if (color == highlight)
-        cell.setBackground('white');
-    }
-  }
   SpreadsheetApp.flush();
 }
 
@@ -85,7 +74,8 @@ function LastFirstName(name) {
 }
 
 function SearchUSCF(id) {
-  var html = UrlFetchApp.fetch('http://www.uschess.org/msa/MbrDtlMain.php?' + id).getContentText();
+  link = 'http://www.uschess.org/msa/MbrDtlMain.php?' + id;
+  var html = UrlFetchApp.fetch(link).getContentText();
   
   if (!html) {
     note = 'Network Err';
@@ -134,7 +124,8 @@ function SearchUSCF(id) {
 }
 
 function SearchCFC(id) {
-  var html = UrlFetchApp.fetch('http://chess.ca/players?check_rating_number=' + id).getContentText();
+  link = 'http://chess.ca/players?check_rating_number=' + id;
+  var html = UrlFetchApp.fetch(link).getContentText();
   
   if (!html) {
     note = 'Network Err';
@@ -164,7 +155,8 @@ function SearchCFC(id) {
 }
 
 function SearchFIDE(id) {
-  var html = UrlFetchApp.fetch('http://ratings.fide.com/card.phtml?event=' + id).getContentText();
+  link = 'http://ratings.fide.com/card.phtml?event=' + id;
+  var html = UrlFetchApp.fetch(link).getContentText();
    
   if (!html) {
     note = 'Network Err';
@@ -195,6 +187,9 @@ function SearchFIDE(id) {
 }
 
 function UpdateOneRow(range, i) {
+  if (i < 6)
+    return false;
+  
   var org = range.getCell(i,1).getValue();
   var id = range.getCell(i,2).getValue();
   name_firstlast = '';
@@ -204,6 +199,7 @@ function UpdateOneRow(range, i) {
   blitz_rating = 0;
   highest_rating = 0;
   note = null;
+  link = null;
   
   if (org == 'USCF' && id) {
     SearchUSCF(id);
@@ -222,6 +218,15 @@ function UpdateOneRow(range, i) {
   else if (name_firstlast == '' && name_lastfirst != '')
     name_firstlast = FirstLastName(name_lastfirst);
   
+  // reset background
+  var cols = range.getNumColumns();
+  for (var j = 1; j <= cols; j++) {
+    var cell = range.getCell(i,j);
+    var color = cell.getBackground();
+    if (color == highlight)
+      cell.setBackground('white');
+  }
+  
   var update = false;
   update |= UpdateCell(range.getCell(i, 3), name_firstlast, 0);
   update |= UpdateCell(range.getCell(i, 4), name_lastfirst, 0);
@@ -230,6 +235,7 @@ function UpdateOneRow(range, i) {
   update |= UpdateCell(range.getCell(i, 8), blitz_rating, 1);
   update |= UpdateCell(range.getCell(i, 5), highest_rating, 2);
   update |= UpdateCell(range.getCell(i, 9), note, 0);
+  update |= UpdateCell(range.getCell(i, 10), link, 0);
   return update;
 }
 
