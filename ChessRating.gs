@@ -1,4 +1,7 @@
 var highlight = '#ff9900';
+var startRow = 8;
+var cols = 10;
+
 var name_firstlast = '';
 var name_lastfirst = '';
 var regular_rating = 0;
@@ -28,9 +31,9 @@ function BackupSheet() {
   SpreadsheetApp.flush();
 }
 
-function UpdateCell(cell, value, mode) {
+function UpdateCell(values, colors, i, j, value, mode) {
   if (value) {
-    var old = cell.getValue();
+    var old = values[i][j];
     switch (mode) {
       case 2: // max rating
         if (value <= old)
@@ -48,8 +51,8 @@ function UpdateCell(cell, value, mode) {
           return false;
         break;
     }
-    cell.setValue(value);
-    cell.setBackground(highlight);
+    values[i][j] = value;
+    colors[i][j] = highlight;
     return true;
   }
   return false;
@@ -74,8 +77,13 @@ function LastFirstName(name) {
 }
 
 function SearchUSCF(id) {
+  var html = null;
   link = 'http://www.uschess.org/msa/MbrDtlMain.php?' + id;
-  var html = UrlFetchApp.fetch(link).getContentText();
+  try {
+    html = UrlFetchApp.fetch(link).getContentText();
+  } catch (err) {
+    html = null;
+  }
   
   if (!html) {
     note = 'Network Err';
@@ -124,8 +132,13 @@ function SearchUSCF(id) {
 }
 
 function SearchCFC(id) {
+  var html = null;
   link = 'http://chess.ca/players?check_rating_number=' + id;
-  var html = UrlFetchApp.fetch(link).getContentText();
+  try {
+    html = UrlFetchApp.fetch(link).getContentText();
+  } catch (err) {
+    html = null;
+  }
   
   if (!html) {
     note = 'Network Err';
@@ -155,9 +168,14 @@ function SearchCFC(id) {
 }
 
 function SearchFIDE(id) {
+  var html = null;
   link = 'http://ratings.fide.com/card.phtml?event=' + id;
-  var html = UrlFetchApp.fetch(link).getContentText();
-   
+  try {
+    html = UrlFetchApp.fetch(link).getContentText();
+  } catch (err) {
+    html = null;
+  }
+  
   if (!html) {
     note = 'Network Err';
     return;
@@ -186,12 +204,9 @@ function SearchFIDE(id) {
     blitz_rating = ret[1];
 }
 
-function UpdateOneRow(range, i) {
-  if (i < 6)
-    return false;
-  
-  var org = range.getCell(i,1).getValue();
-  var id = range.getCell(i,2).getValue();
+function UpdateOneRow(values, colors, i) {
+  var fed = values[i][0];
+  var id = values[i][1];
   name_firstlast = '';
   name_lastfirst = '';
   regular_rating = 0;
@@ -201,16 +216,16 @@ function UpdateOneRow(range, i) {
   note = null;
   link = null;
   
-  if (org == 'USCF' && id) {
+  if (fed == 'USCF' && id) {
     SearchUSCF(id);
-  } else if (org == 'CFC' && id) {
+  } else if (fed == 'CFC' && id) {
     SearchCFC(id);
-  } else if (org == 'FIDE' && id) {
+  } else if (fed == 'FIDE' && id) {
     SearchFIDE(id);
-  } else if (org != '') {
-    name_firstlast = range.getCell(i,3).getValue();
-    name_lastfirst = range.getCell(i,4).getValue();
-    note = 'Unsupported Org';
+  } else if (fed != '') {
+    name_firstlast = values[i][2];
+    name_lastfirst = values[i][3];
+    note = 'Unsupported fed';
   }
   
   if (name_lastfirst == '' && name_firstlast != '')
@@ -218,24 +233,15 @@ function UpdateOneRow(range, i) {
   else if (name_firstlast == '' && name_lastfirst != '')
     name_firstlast = FirstLastName(name_lastfirst);
   
-  // reset background
-  var cols = range.getNumColumns();
-  for (var j = 1; j <= cols; j++) {
-    var cell = range.getCell(i,j);
-    var color = cell.getBackground();
-    if (color == highlight)
-      cell.setBackground('white');
-  }
-  
   var update = false;
-  update |= UpdateCell(range.getCell(i, 3), name_firstlast, 0);
-  update |= UpdateCell(range.getCell(i, 4), name_lastfirst, 0);
-  update |= UpdateCell(range.getCell(i, 6), regular_rating, 1);
-  update |= UpdateCell(range.getCell(i, 7), quick_rating, 1);
-  update |= UpdateCell(range.getCell(i, 8), blitz_rating, 1);
-  update |= UpdateCell(range.getCell(i, 5), highest_rating, 2);
-  update |= UpdateCell(range.getCell(i, 9), note, 0);
-  update |= UpdateCell(range.getCell(i, 10), link, 0);
+  update |= UpdateCell(values, colors, i, 2, name_firstlast, 0);
+  update |= UpdateCell(values, colors, i, 3, name_lastfirst, 0);
+  update |= UpdateCell(values, colors, i, 5, regular_rating, 1);
+  update |= UpdateCell(values, colors, i, 6, quick_rating, 1);
+  update |= UpdateCell(values, colors, i, 7, blitz_rating, 1);
+  update |= UpdateCell(values, colors, i, 4, highest_rating, 2);
+  update |= UpdateCell(values, colors, i, 8, note, 0);
+  update |= UpdateCell(values, colors, i, 9, link, 0);
   return update;
 }
 
@@ -250,14 +256,38 @@ function UpdateSelectedRows() {
   
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var cur = ss.getSheetByName('Current');
-  var range = cur.getDataRange();
-  var rows = cur.getActiveRange();
+  var selected = cur.getActiveRange();
+  var row1 = selected.getRow();
+  var row2 = selected.getLastRow();
+  if (row1 < startRow)
+    row1 = startRow;
+  if (row2 < row1) {
+    Browser.msgBox('Please choose any rows starting from ROW 8');
+    return;
+  }
+  
+  var rows = row2 - row1 + 1;
+  var range = cur.getRange(row1, 1, rows, cols);
+  var values = range.getValues();
+  var colors = range.getBackgrounds();
+
+  for (var i = 0; i < rows; i++)
+    for (var j = 2; j < cols; j++)
+      colors[i][j] = '#ffffff';
+  
+  range.setBackgrounds(colors);
+  
+  SpreadsheetApp.flush();
+  
   var n = 0;
-  for (var i = rows.getRow(); i <= rows.getLastRow(); i++) {
-    if (UpdateOneRow(range, i))
+  for (var i = 0; i < rows; i++) {
+    if (UpdateOneRow(values, colors, i))
       n ++;
   }
   
+  range.setValues(values);
+  range.setBackgrounds(colors);
+  SpreadsheetApp.flush();
   lock.releaseLock();
   Browser.msgBox(n + ' persons updated');
 }
@@ -271,19 +301,40 @@ function UpdateAllRows() {
     return;
   }
   
-  // save a backup first
-  BackupSheet();
-
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var cur = ss.getSheetByName('Current');
-  var range = cur.getDataRange();
-  var rows = range.getNumRows();
+  var row1 = startRow;
+  var row2 = cur.getLastRow();
+  if (row2 < row1) {
+    Browser.msgBox('Please input data starting from ROW 8');
+    return;
+  }
+  
+  // save a backup first
+  BackupSheet();
+  
+  var rows = row2 - row1 + 1;
+  var range = cur.getRange(row1, 1, rows, cols);
+  var values = range.getValues();
+  var colors = range.getBackgrounds();
+
+  for (var i = 0; i < rows; i++)
+    for (var j = 2; j < cols; j++)
+      colors[i][j] = '#ffffff';
+  
+  range.setBackgrounds(colors);
+  
+  SpreadsheetApp.flush();
+  
   var n = 0;
-  for (var i = 6; i <= rows; i++) {
-    if (UpdateOneRow(range, i))
+  for (var i = 0; i < rows; i++) {
+    if (UpdateOneRow(values, colors, i))
       n ++;
   }
   
+  range.setValues(values);
+  range.setBackgrounds(colors);
+  SpreadsheetApp.flush();
   lock.releaseLock();
   Browser.msgBox(n + ' persons updated');
 }
