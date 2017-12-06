@@ -1,6 +1,6 @@
 var highlight = '#ff9900';
-var startRow1 = 6;
-var startRow2 = 8;
+var startRow1 = 5;
+var startRow2 = 6;
 var cols = 10;
 
 var name_firstlast = '';
@@ -291,7 +291,7 @@ function UpdateSelectedRows() {
   SpreadsheetApp.flush();
   lock.releaseLock();
   Browser.msgBox(n + ' persons updated');
-  UpdateLog('UpdateSelectedRows [' + row1 + '-' + row2 + ']: ' + n + ' persons updated');
+  UpdateLog('UpdateSelectedRows [' + row1 + '-' + row2 + ']: ' + n + ' person(s) updated');
   
   return n;
 }
@@ -345,7 +345,7 @@ function UpdateAllRows() {
   } catch (err) {
   }
   
-  UpdateLog('UpdateAllRows [' + row1 + '-' + row2 + ']: ' + n + ' persons updated');
+  UpdateLog('UpdateAllRows [' + row1 + '-' + row2 + ']: ' + n + ' person(s) updated');
               
   return n;
 }
