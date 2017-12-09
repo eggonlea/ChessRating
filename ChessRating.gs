@@ -3,6 +3,10 @@ var startRow1 = 5;
 var startRow2 = 6;
 var cols = 10;
 
+var err_network = 'Network ERR';
+var err_fed = 'Unsupported FED';
+var err_id = 'Invalid ID';
+
 var name_firstlast = '';
 var name_lastfirst = '';
 var regular_rating = 0;
@@ -26,16 +30,38 @@ function BackupSheet() {
   var sheet = cur.copyTo(ss);
   sheet.setName(bak);
   ss.setActiveSheet(sheet);
-  ss.moveActiveSheet(2);
+  ss.moveActiveSheet(4);
   ss.setActiveSheet(cur);
   
   SpreadsheetApp.flush();
 }
 
+function IsError(value) {
+  if (value == err_network)
+    return true;
+  if (value == err_fed)
+    return true;
+  if (value == err_id)
+    return true;
+  return false;
+}
+
 function UpdateCell(values, colors, i, j, value, mode) {
-  if (value) {
-    var old = values[i][j];
+  var old = values[i][j];
+  
+  // deal with erro note specifically
+  if (mode == 3) {
+    if (IsError(old))
+      values[i][j] = ''; // clear previous error note
+    else if (old != '')
+      return false; // keep manually inputted note
+  }
+  
+  // continue normal process
+  if (value != null) {
     switch (mode) {
+      case 3: // note
+        break;
       case 2: // max rating
         if (value <= old)
           return false;
@@ -46,7 +72,7 @@ function UpdateCell(values, colors, i, j, value, mode) {
         if (value == old)
           return false;
         break;
-      case 0: // name
+      case 0: // name/link
       default: // should never reach here
         if (value == old)
           return false;
@@ -77,6 +103,15 @@ function LastFirstName(name) {
   return last + ', ' + first;
 }
 
+function FixNameAddComma(name) {
+  if (!name)
+    return null;
+  
+  var last = name.split(' ').slice(0, 1).join(' ').trim();
+  var first = name.split(' ').slice(1).join(' ').trim();
+  return last + ', ' + first;
+}
+
 function SearchUSCF(id) {
   var html = null;
   link = 'http://www.uschess.org/msa/MbrDtlMain.php?' + id;
@@ -87,7 +122,7 @@ function SearchUSCF(id) {
   }
   
   if (!html) {
-    note = 'Network Err';
+    note = err_network;
     return;
   }
   
@@ -96,7 +131,7 @@ function SearchUSCF(id) {
   if (ret)
     name_firstlast = ret[1];
   else
-    note = 'Invalid ID';
+    note = err_id;
   
   // Regular Rating
   // </td>
@@ -142,7 +177,7 @@ function SearchCFC(id) {
   }
   
   if (!html) {
-    note = 'Network Err';
+    note = err_network;
     return;
   }
   
@@ -154,7 +189,7 @@ function SearchCFC(id) {
   if (ret)
     name_firstlast = ret[1];
   else
-    note = 'Invalid ID';
+    note = err_id;
   
   // City/Prov</td></tr><tr><td>1286</td><td>1286</td><td>1225</td><td>1225</td>
   var ret = html.match('City/Prov</td></tr><tr><td>([0-9]+)</td><td>([0-9]+)</td><td>([0-9]+)</td><td>([0-9]+)</td>');
@@ -178,7 +213,7 @@ function SearchFIDE(id) {
   }
   
   if (!html) {
-    note = 'Network Err';
+    note = err_network;
     return;
   }
   
@@ -187,7 +222,7 @@ function SearchFIDE(id) {
   if (ret)
     name_lastfirst = ret[1];
   else
-    note = 'Invalid ID';
+    note = err_id;
   
   // <small>std.</small><br>1318
   var ret = html.match('<small>std.</small><br>([0-9]+)');
@@ -203,6 +238,40 @@ function SearchFIDE(id) {
   var ret = html.match('<small>blitz</small><br>([0-9]+)');
   if (ret)
     blitz_rating = ret[1];
+}
+
+function SearchCMA(id) {
+  var html = null;
+  link = 'https://chess-math.org/cotes/id/' + id;
+  try {
+    html = UrlFetchApp.fetch(link).getContentText();
+  } catch (err) {
+    html = null;
+  }
+  
+  if (!html) {
+    note = err_network;
+    return;
+  }
+  
+  // <h4><spam style="color:orange">Li Lang Ji<span>
+  var ret = html.match('<h4><spam.*>(.+)<span>');
+  if (ret)
+    name_lastfirst = FixNameAddComma(ret[1]);
+  else
+    note = err_id;
+  
+  // <h4>Rating : 484</h4>
+  var ret = html.match('<h4>Rating : ([0-9]+)</h4>');
+  if (ret)
+    regular_rating = ret[1];
+
+  // <h4>Max rating : 484</h4>
+  var ret = html.match('<h4>Max rating : ([0-9]+)</h4>');
+  if (ret) {
+    if (ret[1] > highest_rating)
+      highest_rating = ret[1];
+  }
 }
 
 function UpdateOneRow(values, colors, i) {
@@ -223,10 +292,12 @@ function UpdateOneRow(values, colors, i) {
     SearchCFC(id);
   } else if (fed == 'FIDE' && id) {
     SearchFIDE(id);
+  } else if (fed == 'CMA' && id) {
+    SearchCMA(id);
   } else if (fed != '') {
     name_firstlast = values[i][2];
     name_lastfirst = values[i][3];
-    note = 'Unsupported fed';
+    note = err_fed;
   }
   
   if (name_lastfirst == '' && name_firstlast != '')
@@ -241,7 +312,7 @@ function UpdateOneRow(values, colors, i) {
   update |= UpdateCell(values, colors, i, 6, quick_rating, 1);
   update |= UpdateCell(values, colors, i, 7, blitz_rating, 1);
   update |= UpdateCell(values, colors, i, 4, highest_rating, 2);
-  update |= UpdateCell(values, colors, i, 8, note, 0);
+  update |= UpdateCell(values, colors, i, 8, note, 3);
   update |= UpdateCell(values, colors, i, 9, link, 0);
   return update;
 }
@@ -352,7 +423,7 @@ function UpdateAllRows() {
 
 function UpdateLog(msg) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('UpdateLog');
-  var time = Utilities.formatDate(new Date(), 'GMT-7', 'yyyy-MM-dd hh:mm:ss');
+  var time = Utilities.formatDate(new Date(), 'GMT-7', 'EEE yyyy-MM-dd HH:mm:ss z');
   sheet.appendRow([time, msg]);
 }
 
