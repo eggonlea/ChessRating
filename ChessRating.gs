@@ -114,7 +114,7 @@ function FixNameAddComma(name) {
 
 function SearchUSCF(id) {
   var html = null;
-  link = 'http://www.uschess.org/msa/MbrDtlMain.php?' + id;
+  link = 'http://www.uschess.org/msa/MbrDtlRtgSupp.php?' + id;
   try {
     html = UrlFetchApp.fetch(link).getContentText();
   } catch (err) {
@@ -133,38 +133,39 @@ function SearchUSCF(id) {
   else
     note = err_id;
   
-  // Regular Rating
-  // </td>
-  //
-  // <td>
-  // <b><nobr>
-  // 660&nbsp;&nbsp;
-  // 2017-07</nobr>
-  var ret = html.match('Regular Rating\n</td>\n+<td>\n<b><nobr>\n([0-9]+)');
-  if (ret)
-    regular_rating = ret[1];
-  
-  // Quick Rating
-  // </td>
-  //
-  // <td>
-  // <b>
-  // 658&nbsp;&nbsp;
-  // 2017-07</nobr>
-  var ret = html.match('Quick Rating\n</td>\n+<td>\n<b>\n([0-9]+)');
-  if (ret)
-    quick_rating = ret[1];
-  
-  // Blitz Rating
-  // </td>
-  //
-  // <td>
-  // <b>
-  // (Unrated)&nbsp;&nbsp;
-  // 2017-07</nobr>
-  var ret = html.match('Blitz Rating\n</td>\n+<td>\n<b>\n([0-9]+)');
-  if (ret)
-    blitz_rating = ret[1];
+  // <tr bgcolor=FFFFC0 align=center>
+  // <td width=200>&nbsp;</td>
+  // <td width=100>2014-03</td>
+  // <td width=100> 107 (P05)</td>
+  // <td width=100> 114 (P05)</td>
+  // <td width=100>---</td>
+  // <td width=100>---</td>
+  // <td width=100>---</td>
+  // <td></td>
+  var re = /<td width=100>\d+-\d+<\/td>\n<td width=100>(?:(?: *(\d+)(?: \(P\d+\))*)|(?:---))<\/td>\n<td width=100>(?:(?: *(\d+)(?: \(P\d+\))*)|(?:---))<\/td>\n<td width=100>(?:(?: *(\d+)(?: \(P\d+\))*)|(?:---))<\/td>\n/g;
+  while ((ret = re.exec(html)) != null) {
+    var rating = Number(ret[1]);
+    if (rating) {
+      if (regular_rating == 0)
+        regular_rating = rating;
+      if (rating > highest_rating)
+          highest_rating = rating;
+    }
+    rating = Number(ret[2]);
+    if (rating) {
+      if (quick_rating == 0)
+        quick_rating = rating;
+      if (rating > highest_rating)
+          highest_rating = rating;
+    }
+    rating = Number(ret[3]);
+    if (rating) {
+      if (blitz_rating == 0)
+        blitz_rating = rating;
+      if (rating > highest_rating)
+          highest_rating = rating;
+    }
+  }
 }
 
 function SearchCFC(id) {
@@ -194,12 +195,14 @@ function SearchCFC(id) {
   // City/Prov</td></tr><tr><td>1286</td><td>1286</td><td>1225</td><td>1225</td>
   var ret = html.match('City/Prov</td></tr><tr><td>([0-9]+)</td><td>([0-9]+)</td><td>([0-9]+)</td><td>([0-9]+)</td>');
   if (ret) {
-    regular_rating = ret[1];
-    quick_rating = ret[3];
-    if (ret[2] > highest_rating)
-      highest_rating = ret[2];
-    if (ret[4] > highest_rating)
-      highest_rating = ret[4];
+    regular_rating = Number(ret[1]);
+    quick_rating = Number(ret[3]);
+    var rating = Number(ret[2]);
+    if (rating > highest_rating)
+      highest_rating = rating;
+    rating = Number(ret[4]);
+    if (rating > highest_rating)
+      highest_rating = rating;
   }
 }
 
@@ -227,17 +230,17 @@ function SearchFIDE(id) {
   // <small>std.</small><br>1318
   var ret = html.match('<small>std.</small><br>([0-9]+)');
   if (ret)
-    regular_rating = ret[1];
+    regular_rating = Number(ret[1]);
 
   // <small>rapid</small><br>Not rated
   var ret = html.match('<small>rapid</small><br>([0-9]+)');
   if (ret)
-    quick_rating = ret[1];
+    quick_rating = Number(ret[1]);
 
   // <small>blitz</small><br>Not rated
   var ret = html.match('<small>blitz</small><br>([0-9]+)');
   if (ret)
-    blitz_rating = ret[1];
+    blitz_rating = Number(ret[1]);
 }
 
 function SearchCMA(id) {
@@ -264,13 +267,14 @@ function SearchCMA(id) {
   // <h4>Rating : 484</h4>
   var ret = html.match('<h4>Rating : ([0-9]+)</h4>');
   if (ret)
-    regular_rating = ret[1];
+    regular_rating = Number(ret[1]);
 
   // <h4>Max rating : 484</h4>
   var ret = html.match('<h4>Max rating : ([0-9]+)</h4>');
   if (ret) {
-    if (ret[1] > highest_rating)
-      highest_rating = ret[1];
+    var rating = ret[1];
+    if (rating > highest_rating)
+      highest_rating = rating;
   }
 }
 
