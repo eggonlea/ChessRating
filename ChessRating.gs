@@ -67,8 +67,7 @@ function UpdateCell(values, colors, i, j, value, mode) {
           return false;
         break;
       case 1: // rating
-        if (value > highest_rating)
-          highest_rating = value;
+        highest_rating = Math.max(value, highest_rating);
         if (value == old)
           return false;
         break;
@@ -148,22 +147,19 @@ function SearchUSCF(id) {
     if (rating) {
       if (regular_rating == 0)
         regular_rating = rating;
-      if (rating > highest_rating)
-          highest_rating = rating;
+      highest_rating = Math.max(rating, highest_rating);
     }
     rating = Number(ret[2]);
     if (rating) {
       if (quick_rating == 0)
         quick_rating = rating;
-      if (rating > highest_rating)
-          highest_rating = rating;
+      highest_rating = Math.max(rating, highest_rating);
     }
     rating = Number(ret[3]);
     if (rating) {
       if (blitz_rating == 0)
         blitz_rating = rating;
-      if (rating > highest_rating)
-          highest_rating = rating;
+      highest_rating = Math.max(rating, highest_rating);
     }
   }
 }
@@ -197,12 +193,8 @@ function SearchCFC(id) {
   if (ret) {
     regular_rating = Number(ret[1]);
     quick_rating = Number(ret[3]);
-    var rating = Number(ret[2]);
-    if (rating > highest_rating)
-      highest_rating = rating;
-    rating = Number(ret[4]);
-    if (rating > highest_rating)
-      highest_rating = rating;
+    highest_rating = Math.max(Number(ret[2]), highest_rating);
+    highest_rating = Math.max(Number(ret[4]), highest_rating);
   }
 }
 
@@ -271,11 +263,8 @@ function SearchCMA(id) {
 
   // <h4>Max rating : 484</h4>
   var ret = html.match('<h4>Max rating : ([0-9]+)</h4>');
-  if (ret) {
-    var rating = ret[1];
-    if (rating > highest_rating)
-      highest_rating = rating;
-  }
+  if (ret)
+    highest_rating = Math.max(Number(ret[1]), highest_rating);
 }
 
 function UpdateOneRow(values, colors, i) {
@@ -333,12 +322,10 @@ function UpdateSelectedRows() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var cur = ss.getSheetByName('Current');
   var selected = cur.getActiveRange();
-  var row1 = selected.getRow();
-  var row2 = selected.getLastRow();
-  if (row1 < startRow1)
-    row1 = startRow1;
+  var row1 = Math.max(startRow1, selected.getRow());
+  var row2 = Math.min(cur.getLastRow(), selected.getLastRow());
   if (row2 < row1) {
-    Browser.msgBox('Please choose any rows starting from ROW 8');
+    Browser.msgBox('Please choose any rows starting from ROW ' + startRow1);
     return 0;
   }
   
@@ -385,7 +372,7 @@ function UpdateAllRows() {
   var row1 = startRow2;
   var row2 = cur.getLastRow();
   if (row2 < row1) {
-    Browser.msgBox('Please input data starting from ROW 8');
+    Browser.msgBox('Please input data starting from ROW ' + startRow2);
     return 0;
   }
   
