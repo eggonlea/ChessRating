@@ -1,6 +1,9 @@
+var email = 'eggonlea@gmail.com,aawlbt@gmail.com';
+var subject = '[ChessRating] ';
+var body = '';
+
 var highlight = '#ff9900';
-var startRow1 = 5;
-var startRow2 = 6;
+var startRow = 5;
 var cols = 10;
 
 var err_network = 'Network ERR';
@@ -51,7 +54,7 @@ function UpdateCell(values, colors, i, j, value, mode) {
   
   // deal with erro note specifically
   if (mode == 3) {
-    if (IsError(old))
+    if (IsError(old) && old != value)
       values[i][j] = ''; // clear previous error note
     else if (old != '')
       return false; // keep manually inputted note
@@ -307,6 +310,10 @@ function UpdateOneRow(values, colors, i) {
   update |= UpdateCell(values, colors, i, 4, highest_rating, 2);
   update |= UpdateCell(values, colors, i, 8, note, 3);
   update |= UpdateCell(values, colors, i, 9, link, 0);
+  
+  if (update)
+    body += '[' + (i + startRow) + ']' + values[i] + '\n';
+  
   return update;
 }
 
@@ -322,10 +329,10 @@ function UpdateSelectedRows() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var cur = ss.getSheetByName('Current');
   var selected = cur.getActiveRange();
-  var row1 = Math.max(startRow1, selected.getRow());
+  var row1 = Math.max(startRow, selected.getRow());
   var row2 = Math.min(cur.getLastRow(), selected.getLastRow());
   if (row2 < row1) {
-    Browser.msgBox('Please choose any rows starting from ROW ' + startRow1);
+    Browser.msgBox('Please choose any rows starting from ROW ' + startRow);
     return 0;
   }
   
@@ -354,6 +361,8 @@ function UpdateSelectedRows() {
   lock.releaseLock();
   Browser.msgBox(n + ' persons updated');
   UpdateLog('UpdateSelectedRows [' + row1 + '-' + row2 + ']: ' + n + ' person(s) updated');
+  if (row1 > startRow || row2 > startRow)
+    MailApp.sendEmail(email, subject, body);
   
   return n;
 }
@@ -369,10 +378,10 @@ function UpdateAllRows() {
   
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var cur = ss.getSheetByName('Current');
-  var row1 = startRow2;
+  var row1 = startRow;
   var row2 = cur.getLastRow();
   if (row2 < row1) {
-    Browser.msgBox('Please input data starting from ROW ' + startRow2);
+    Browser.msgBox('Please input data starting from ROW ' + startRow);
     return 0;
   }
   
@@ -408,14 +417,17 @@ function UpdateAllRows() {
   }
   
   UpdateLog('UpdateAllRows [' + row1 + '-' + row2 + ']: ' + n + ' person(s) updated');
-              
+  MailApp.sendEmail(email, subject, body);
+  
   return n;
 }
 
 function UpdateLog(msg) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('UpdateLog');
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('UpdateLog');
   var time = Utilities.formatDate(new Date(), 'GMT-7', 'EEE yyyy-MM-dd HH:mm:ss z');
   sheet.appendRow([time, msg]);
+  body += '\n' + time + ": " + msg + '\n\n';
 }
 
 // PST 1-2am everyday
