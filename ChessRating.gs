@@ -1,5 +1,4 @@
-var email = 'eggonlea@gmail.com,aawlbt@gmail.com';
-var subject = '[ChessRating] ';
+var subject = '[ChessRating] update notification';
 var body = '';
 
 var highlight = '#ff9900';
@@ -362,7 +361,7 @@ function UpdateSelectedRows() {
   Browser.msgBox(n + ' persons updated');
   UpdateLog('UpdateSelectedRows [' + row1 + '-' + row2 + ']: ' + n + ' person(s) updated');
   if (row1 > startRow || row2 > startRow)
-    MailApp.sendEmail(email, subject, body);
+    MailApp.sendEmail(ss.getEditors(), subject, body);
   
   return n;
 }
@@ -417,7 +416,7 @@ function UpdateAllRows() {
   }
   
   UpdateLog('UpdateAllRows [' + row1 + '-' + row2 + ']: ' + n + ' person(s) updated');
-  MailApp.sendEmail(email, subject, body);
+  MailApp.sendEmail(ss.getEditors(), subject, body);
   
   return n;
 }
