@@ -361,7 +361,7 @@ function UpdateSelectedRows() {
   Browser.msgBox(n + ' persons updated');
   UpdateLog('UpdateSelectedRows [' + row1 + '-' + row2 + ']: ' + n + ' person(s) updated');
   if (row1 > startRow || row2 > startRow)
-    MailApp.sendEmail(ss.getEditors(), subject, body);
+    SendEmail(ss);
   
   return n;
 }
@@ -416,7 +416,7 @@ function UpdateAllRows() {
   }
   
   UpdateLog('UpdateAllRows [' + row1 + '-' + row2 + ']: ' + n + ' person(s) updated');
-  MailApp.sendEmail(ss.getEditors(), subject, body);
+  SendEmail(ss);
   
   return n;
 }
@@ -433,4 +433,9 @@ function UpdateLog(msg) {
 function AutoUpdate() {
   UpdateLog('Triggering auto update...');
   UpdateAllRows();
+}
+
+function SendEmail(ss) {
+  body += '\n' + ss.getUrl();
+  MailApp.sendEmail(ss.getEditors(), subject, body);
 }
